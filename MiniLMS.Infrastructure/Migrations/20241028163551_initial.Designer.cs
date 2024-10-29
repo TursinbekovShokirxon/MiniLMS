@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MiniLMS.Infrastructure.Migrations
 {
     [DbContext(typeof(MiniLMSDbContext))]
-    [Migration("20231015081215_initdb")]
-    partial class initdb
+    [Migration("20241028163551_initial")]
+    partial class initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,6 +25,55 @@ namespace MiniLMS.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("MiniLMS.Domain.Entities.Course", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("TeacherId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TeacherId");
+
+                    b.ToTable("Courses");
+                });
+
+            modelBuilder.Entity("MiniLMS.Domain.Entities.CourseRegistration", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CourseId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourseId");
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("CourseRegistrations");
+                });
+
             modelBuilder.Entity("MiniLMS.Domain.Entities.Student", b =>
                 {
                     b.Property<int>("Id")
@@ -35,6 +84,9 @@ namespace MiniLMS.Infrastructure.Migrations
 
                     b.Property<DateOnly?>("BirthDate")
                         .HasColumnType("date");
+
+                    b.Property<int?>("CourseId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("FullName")
                         .IsRequired()
@@ -48,7 +100,6 @@ namespace MiniLMS.Infrastructure.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("Major")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("Password")
@@ -60,6 +111,8 @@ namespace MiniLMS.Infrastructure.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CourseId");
 
                     b.ToTable("Students");
                 });
@@ -97,39 +150,57 @@ namespace MiniLMS.Infrastructure.Migrations
                     b.Property<double?>("Salary")
                         .HasColumnType("double precision");
 
+                    b.Property<int>("TeacherTypeState")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.ToTable("Teachers");
                 });
 
-            modelBuilder.Entity("StudentTeacher", b =>
+            modelBuilder.Entity("MiniLMS.Domain.Entities.Course", b =>
                 {
-                    b.Property<int>("StudentsId")
-                        .HasColumnType("integer");
+                    b.HasOne("MiniLMS.Domain.Entities.Teacher", "Teacher")
+                        .WithMany("Courses")
+                        .HasForeignKey("TeacherId");
 
-                    b.Property<int>("TeachersId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("StudentsId", "TeachersId");
-
-                    b.HasIndex("TeachersId");
-
-                    b.ToTable("StudentTeacher");
+                    b.Navigation("Teacher");
                 });
 
-            modelBuilder.Entity("StudentTeacher", b =>
+            modelBuilder.Entity("MiniLMS.Domain.Entities.CourseRegistration", b =>
                 {
-                    b.HasOne("MiniLMS.Domain.Entities.Student", null)
+                    b.HasOne("MiniLMS.Domain.Entities.Course", "Course")
                         .WithMany()
-                        .HasForeignKey("StudentsId")
+                        .HasForeignKey("CourseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MiniLMS.Domain.Entities.Teacher", null)
+                    b.HasOne("MiniLMS.Domain.Entities.Student", "Student")
                         .WithMany()
-                        .HasForeignKey("TeachersId")
+                        .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Course");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("MiniLMS.Domain.Entities.Student", b =>
+                {
+                    b.HasOne("MiniLMS.Domain.Entities.Course", null)
+                        .WithMany("Students")
+                        .HasForeignKey("CourseId");
+                });
+
+            modelBuilder.Entity("MiniLMS.Domain.Entities.Course", b =>
+                {
+                    b.Navigation("Students");
+                });
+
+            modelBuilder.Entity("MiniLMS.Domain.Entities.Teacher", b =>
+                {
+                    b.Navigation("Courses");
                 });
 #pragma warning restore 612, 618
         }

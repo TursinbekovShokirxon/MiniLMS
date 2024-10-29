@@ -1,6 +1,5 @@
 ﻿using AutoMapper;
 using LazyCache;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MiniLMS.Application.Caching;
 using MiniLMS.Application.Services;
@@ -21,7 +20,7 @@ public class TeacherController : ControllerBase
     private readonly Serilog.ILogger _serilog;
 
 
-    public TeacherController(IAppCache appCache,Serilog.ILogger serilog,ITeacherService teacherService, IMapper mapper)
+    public TeacherController(IAppCache appCache, Serilog.ILogger serilog, ITeacherService teacherService, IMapper mapper)
     {
         _teacherService = teacherService;
         _mapper = mapper;
@@ -37,10 +36,18 @@ public class TeacherController : ControllerBase
             _serilog.Information("Get all from cache");
             return new ResponseModel<IEnumerable<TeacherGetDTO>>(cachedTeachers);
         }
-            _serilog.Information("Get all from Database");
+        _serilog.Information("Get all from Database");
 
         var getTeachers = await _teacherService.GetAllAsync();
-        IEnumerable<TeacherGetDTO> teachers = _mapper.Map<IEnumerable<TeacherGetDTO>>(getTeachers);
+        IEnumerable<TeacherGetDTO> teachers = getTeachers.Select(x => new TeacherGetDTO
+        {
+            Id = x.Id,
+            Salary = x.Salary,
+            FullName = x.FullName,
+            BirthDate = x.BirthDate,
+            Gender = x.Gender,
+            PhoneNumber = x.PhoneNumber
+        }).ToList();
 
         _appCache.Add(CacheKeys.Teacher, teachers, TimeSpan.FromMinutes(10));
 
@@ -50,8 +57,18 @@ public class TeacherController : ControllerBase
     public async Task<ResponseModel<TeacherGetDTO>> GetById(int id)
     {
         Teacher teacherEntity = await _teacherService.GetByIdAsync(id);
-        TeacherGetDTO teacherDto = _mapper.Map<TeacherGetDTO>(teacherEntity);
-        if(teacherEntity == null)
+        TeacherGetDTO teacherDto = new()
+        {
+
+            BirthDate = teacherEntity.BirthDate,
+            Gender = teacherEntity.Gender,
+            FullName = teacherEntity.FullName,
+            PhoneNumber = teacherEntity.PhoneNumber,
+            Id = teacherEntity.Id,
+            Login = teacherEntity.Login,
+            Salary = teacherEntity.Salary
+        };
+        if (teacherEntity == null)
         {
             _serilog.Warning($"Teacher with id:{id} not found!");
             return new(teacherDto, HttpStatusCode.NotFound);
@@ -61,12 +78,23 @@ public class TeacherController : ControllerBase
     [HttpPost]
     public async Task<ResponseModel<TeacherGetDTO>> Create(TeacherCreateDTO teacherCreateDto)
     {
-        if(teacherCreateDto== null)
+        if (teacherCreateDto == null)
         {
             _serilog.Warning("teacher is null!");
         }
         _serilog.Debug("Create teacher executing...");
-        Teacher mappedTeacher = _mapper.Map<Teacher>(teacherCreateDto);
+        Teacher mappedTeacher = new()
+        {
+            BirthDate = teacherCreateDto.BirthDate,
+            Gender = teacherCreateDto.Gender,
+            FullName = teacherCreateDto.FullName,
+            PhoneNumber = teacherCreateDto.PhoneNumber,
+            Password = teacherCreateDto.Password,
+            Login = teacherCreateDto.Login,
+            Salary = teacherCreateDto.Salary
+        };
+
+
         Teacher teacherEntity = await _teacherService.CreateAsync(mappedTeacher);
 
         TeacherGetDTO teacherDto = _mapper.Map<TeacherGetDTO>(teacherEntity);
@@ -77,7 +105,7 @@ public class TeacherController : ControllerBase
     public async Task<ResponseModel<string>> DeleteAsync(int id)
     {
         bool resultDelete = await _teacherService.DeleteAsync(id);
-        string res = resultDelete ? "O'chirildi" : "Bunday id topilmadi";
+        string res = resultDelete ? "Deleted!" : "This id isn't searched";
         if (resultDelete)
         {
             _serilog.Warning($"teacher not found id:{id}");

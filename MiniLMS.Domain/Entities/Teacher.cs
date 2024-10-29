@@ -1,6 +1,9 @@
-﻿namespace MiniLMS.Domain.Entities;
+﻿using MiniLMS.Domain.States;
+
+namespace MiniLMS.Domain.Entities;
 public class Teacher : BaseEntity
 {
-    public virtual ICollection<Student?> Students { get; set; }
+    public IList<Course>? Courses { get; set; }
     public double? Salary { get; set; }
+    public TeacherTypeState TeacherTypeState { get; set; }
 }

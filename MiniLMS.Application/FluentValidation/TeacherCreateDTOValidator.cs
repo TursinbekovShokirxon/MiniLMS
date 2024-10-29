@@ -19,7 +19,6 @@ namespace MiniLMS.Application.FluentValidation
         {
             _studentService = studentService;
             RuleFor(x => x.BirthDate).Must(yearsOldCheck);
-            RuleFor(x=>x.StudentIds).Must(studentCheck);
             RuleFor(x => x.PhoneNumber).NotEmpty()
            .NotNull().WithMessage("Phone Number is required.")
            .MinimumLength(10).WithMessage("PhoneNumber must not be less than 10 characters.")
@@ -27,8 +26,8 @@ namespace MiniLMS.Application.FluentValidation
            .Matches(new Regex("(?:\\+[9]{2}[8][0-9]{2}\\ [0-9]{3}\\ [0-9]{2}\\ [0-9]{2})"));
             /////// +99893 557 84 75
             RuleFor(x => x.Login).Matches(new Regex("[a-zA-Z0-9]")).WithMessage("Login format is incorrect");
-            RuleFor(x => x.Password).Matches(new Regex("(?!^[0-9]*$)(?!^[a-zA-Z]*$)^([a-zA-Z0-9]{8,15})$"))
-                .WithMessage("Password format is incorrect!");
+          //  RuleFor(x => x.Password).Matches(new Regex("(?!^[0-9]*$)(?!^[a-zA-Z]*$)^([a-zA-Z0-9]{8,15})$"))
+                //.WithMessage("Password format is incorrect!");
 
         }
         public bool studentCheck(IEnumerable<int> std)

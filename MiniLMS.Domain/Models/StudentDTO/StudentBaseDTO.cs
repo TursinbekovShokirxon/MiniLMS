@@ -11,7 +11,6 @@ public class StudentBaseDTO:IValidatableObject
     public Gender Gender { get; set; }
     public string? PhoneNumber { get; set; }
     public string Major { get; set; }
-    public IEnumerable<int> Teachersid { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {

@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using MiniLMS.Application.Services;
 using MiniLMS.Domain.Entities;
 using MiniLMS.Infrastructure.DataAccess;
@@ -7,9 +8,10 @@ namespace MiniLMS.Infrastructure.Services;
 public class TeacherService : ITeacherService
 {
     private readonly MiniLMSDbContext _context;
-
-    public TeacherService(MiniLMSDbContext context)
+    private readonly IMemoryCache _cache;
+    public TeacherService(MiniLMSDbContext context, IMemoryCache cache)
     {
+        _cache=cache;   
         _context = context;
     }
 
@@ -22,7 +24,8 @@ public class TeacherService : ITeacherService
 
     public async Task<bool> DeleteAsync(int Id)
     {
-        Teacher? entity = await _context.Teachers.FindAsync(Id);
+        Teacher entity = await _context.Teachers.FirstOrDefaultAsync(x=>x.Id==Id);
+
         if (entity == null)
             return false;
 
@@ -31,24 +34,27 @@ public class TeacherService : ITeacherService
         return true;
     }
 
-    public IEnumerable<Teacher> GetAll()
-    {
-        IEnumerable<Teacher> teachers = _context.Teachers.Include(x=>x.Students)
-            .AsNoTracking().AsEnumerable().OrderBy(x=>x.Id);
-        return teachers;
-    }
 
-    public Task<IEnumerable<Teacher>> GetAllAsync()
+
+    public async Task<IEnumerable<Teacher>> GetAllAsync()
     {
-        IEnumerable<Teacher> teachers = _context.Teachers.Include(x=>x.Students)
-            .AsNoTracking().AsEnumerable().OrderBy(x=>x.Id);
-        return Task.FromResult(teachers);
+        if (_cache.TryGetValue($"Teachers", out List<Teacher> cachedProduct))
+            return cachedProduct;
+
+        IEnumerable<Teacher> teachers = _context.Teachers
+        .AsNoTracking().AsEnumerable().OrderBy(x => x.Id);
+        _cache.Set("Teachers", cachedProduct, TimeSpan.FromMinutes(10));
+        return teachers;
     }
 
     public async Task<Teacher?> GetByIdAsync(int id)
     {
-        Teacher? teacherEntity = _context.Teachers.Include(x=>x.Students).FirstOrDefault(x=>x.Id==id);
-        
+        if (_cache.TryGetValue($"Teacher_{id}", out Teacher cachedProduct))
+        {
+           return cachedProduct;
+        }
+        Teacher? teacherEntity = _context.Teachers.FirstOrDefault(x => x.Id == id);
+        _cache.Set($"Teacher_{id}",teacherEntity,TimeSpan.FromMinutes(10));
         return teacherEntity;
     }
 

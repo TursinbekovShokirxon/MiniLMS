@@ -2,7 +2,6 @@ using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.Extensions.DependencyInjection;
 using MiniLMS.Application;
-using MiniLMS.Application.Client;
 using MiniLMS.Application.CustomLogger;
 using MiniLMS.Application.FluentValidation;
 using MiniLMS.Infrastructure;
@@ -80,8 +79,6 @@ public class Program
             
 
             builder.Services.AddControllers();
-
-            builder.Services.AddSingleton<IMynewClient, MynewClient>();
             builder.Services.AddHttpClient();
 
             #region

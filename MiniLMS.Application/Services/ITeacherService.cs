@@ -4,5 +4,4 @@ using MiniLMS.Domain.Entities;
 namespace MiniLMS.Application.Services;
 public interface ITeacherService : IRepository<Teacher>
 {
-    IEnumerable<Teacher> GetAll();
 }

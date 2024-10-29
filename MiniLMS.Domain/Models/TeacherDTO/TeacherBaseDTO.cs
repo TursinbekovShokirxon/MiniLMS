@@ -10,5 +10,4 @@ public class TeacherBaseDTO
     public Gender Gender { get; set; }
     public string? PhoneNumber { get; set; }
     public double? Salary { get; set; }
-    public IEnumerable<int> StudentIds { get; set; }
 }

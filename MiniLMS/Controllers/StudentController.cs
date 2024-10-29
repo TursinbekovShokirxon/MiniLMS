@@ -3,11 +3,11 @@ using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
 using MiniLMS.Application.Caching;
-using MiniLMS.Application.External;
 using MiniLMS.Application.Services;
 using MiniLMS.Domain.Entities;
 using MiniLMS.Domain.Models;
 using MiniLMS.Domain.Models.StudentDTO;
+using MiniLMS.Infrastructure.Services;
 using Newtonsoft.Json;
 using Serilog;
 using System.Net;
@@ -17,140 +17,31 @@ namespace MiniLMS.API.Controllers;
 [ApiController]
 public class StudentController : ControllerBase
 {
-
+    private readonly ITeacherService _teacherService;
+    private readonly ICourseRepository _courseService;
     private readonly IStudentService _studentService;
     private readonly IMapper _mapper;
     private readonly IValidator<Student> _validator;
     private readonly IDistributedCache _redis;
     private readonly Serilog.ILogger _seriaLog;
-    private readonly IExternalAPIs _externalAPIs;
-    //private readonly IAppCache _cacheProvider; 
     public StudentController(Serilog.ILogger serilog, 
         IDistributedCache redis, 
         IStudentService studentService, 
         IMapper mapper,
         IValidator<Student> validator,
-        IConfiguration configuration,
-        IExternalAPIs externalAPIs)
+        ITeacherService teacherService,
+        ICourseRepository courseRepository)
     {
         _validator = validator;
         _studentService = studentService;
         _mapper = mapper;
         _redis = redis;
         _seriaLog = serilog;
-        _externalAPIs = externalAPIs;
     }
-
-    #region http services
-
-    //[HttpGet]
-    //public async Task<ResponseModel<Catfact>> GetAllCatFacts()
-    //{
-
-    //    HttpResponseMessage catFacts = await _httpClientServices.GetAsync("https://catfact.ninja/fact");
-    //    var facts = await catFacts.Content.ReadFromJsonAsync<Catfact>();
-    //    //var facts = await _httpClient.GetFromJsonAsync<Catfact>("fact");
-    //    return new(facts);
-    //}
-    //[HttpGet]
-    //public async Task<ResponseModel<Catfact>> GetAllCatFacts2()
-    //{
-
-    //    HttpResponseMessage catFacts = await _httpClientServices.GetAsync("");
-    //    var facts = await catFacts.Content.ReadFromJsonAsync<Catfact>();
-    //    //var facts = await _httpClient.GetFromJsonAsync<Catfact>("fact");
-    //    return new(facts);
-    //}
-
-    ////[HttpGet]
-    ////public async Task<ResponseModel<string>> GetBitcoins()
-    ////{
-
-    ////    return new();
-    ////}
-    //[HttpGet]
-    //public async Task<ResponseModel<Catfact>> BasketbalWithKeyRapid()
-    //{
-
-    //    string apiUrl = "https://api-basketball.p.rapidapi.com/seasons";
-
-    //    using (HttpClient client = new HttpClient())
-    //    {
-    //        // Задайте заголовки запроса, включая X-Rapidapi-Key и X-Rapidapi-Host
-    //        client.DefaultRequestHeaders.Add("X-Rapidapi-Key", "cd69f3fef2msh13bfd14051d51e1p1c3eafjsnc4b6c0c39adc");
-    //        client.DefaultRequestHeaders.Add("X-Rapidapi-Host", "api-basketball.p.rapidapi.com");
-
-    //        try
-    //        {
-    //            // Выполните GET-запрос и получите ответ
-    //            HttpResponseMessage response = await client.GetAsync(apiUrl);
-
-    //            if (response.IsSuccessStatusCode)
-    //            {
-    //                // Прочитайте ответ в виде строки
-    //                string responseContent = await response.Content.ReadAsStringAsync();
-    //                return new(responseContent);
-    //            }
-    //            else
-    //            {
-    //                return new("Ошибка при выполнении запроса. Код статуса:", response.StatusCode);
-    //                //Console.WriteLine("Ошибка при выполнении запроса. Код статуса: " + response.StatusCode);
-    //            }
-    //        }
-    //        catch (Exception ex)
-    //        {
-    //            _seriaLog.Error(ex.Message);
-    //        }
-    //    }
-    //    return new("s");
-
-    //}
-
-    #endregion
-
-    [HttpGet]
-    public async Task<ResponseModel<Catfact>> GetAllCatFacts()
-    {
-        ResponseModel<Catfact> res = await _externalAPIs.GetAllCatFacts();
-        return res;
-    }
-    //----------------------------------
-    
-    [HttpGet]
-    public async Task<ResponseModel<List<Weather>>> GetAllWeather()
-    {
-        ResponseModel<List<Weather>> res = await _externalAPIs.GetWeather();
-        return res;
-    }
-
-    [HttpPost]
-    public async Task<ResponseModel<Weather>> CreateWeather(Weather weather)
-    {
-        var res = await _externalAPIs.CreateWeather(weather);
-
-        return res; 
-    }
-    [HttpPatch]
-    public async Task<ResponseModel<Weather>> UpdateWeathers(Weather weather)
-    {
-        var res = await _externalAPIs.updateWeather(weather);
-        return res;
-    }
-    [HttpDelete]
-    public async Task<ResponseModel<bool>> DeleteWeather(int id)
-    {
-        var res = await _externalAPIs.deleteWeather(id);
-        return res;
-    }
-
-    //----------------------------------
-
-
     [HttpGet]
     public async Task<ResponseModel<IEnumerable<StudentGetDTO>>> GetAll()
     {
         _seriaLog.Information("Get All Student!");
-            //Log.Fatal("Get All Student!");
         string st = _redis.GetString(CacheKeys.Student);
         IEnumerable<Student> student;
         IEnumerable<StudentGetDTO> students;
@@ -174,9 +65,6 @@ public class StudentController : ControllerBase
             _seriaLog.Information("get all from cache");
             students = JsonConvert.DeserializeObject<IEnumerable<StudentGetDTO>>(st);
         }
-        //IEnumerable<StudentGetDTO> students = 
-        //    _mapper.Map<IEnumerable<StudentGetDTO>>(res);
-        
         return new(students);
     }
 
@@ -199,16 +87,34 @@ public class StudentController : ControllerBase
     public async Task<ResponseModel<StudentGetDTO>> Create(StudentCreateDTO studentCreateDto)
     {
         _seriaLog.Information("Create Student!");
-        Student mappedStudent = _mapper.Map<Student>(studentCreateDto);
+
+        Student mappedStudent = new()
+        {
+            BirthDate = studentCreateDto.BirthDate,
+            FullName = studentCreateDto.FullName,
+            Gender = studentCreateDto.Gender,
+            Login = studentCreateDto.Login,
+            Password = studentCreateDto.Password,
+            Major = studentCreateDto.Major,
+            PhoneNumber = studentCreateDto.PhoneNumber
+        };
         var validResult = await _validator.ValidateAsync(mappedStudent);
 
         if (!validResult.IsValid)
             return new(validResult.IsValid.ToString());
         Student studentEntity = await _studentService.CreateAsync(mappedStudent);
-        StudentGetDTO studentDto = _mapper.Map<StudentGetDTO>(mappedStudent);
 
+        StudentGetDTO studentGetDTO = new()
+        {
+            PhoneNumber = studentCreateDto.PhoneNumber,
+            Major = studentCreateDto.Major,
+            Login = studentCreateDto.Login,
+            BirthDate = studentCreateDto.BirthDate,
+            Gender = studentCreateDto.Gender,
+            FullName = studentCreateDto.FullName
+        };
         _redis.Remove(CacheKeys.Student);
-        return new(studentDto);
+        return new(studentGetDTO);
     }
 
     [HttpDelete]
@@ -220,10 +126,9 @@ public class StudentController : ControllerBase
         {
             _seriaLog.Warning($"Student with id: {id} not found!");
         }
-        string s = result ? "O'chirildi" : "Bunday id topilmadi";
+        string s = result ? "Deleted" : "This id not found";
         return s;
     }
-
     [HttpPatch]
     public async Task<ResponseModel<StudentGetDTO>> Update(UpdateStudentDTO update)
     {
@@ -234,6 +139,6 @@ public class StudentController : ControllerBase
         await _studentService.UpdateAsync(mapped);
         StudentGetDTO studentDto = _mapper.Map<StudentGetDTO>(mapped);
         return new(studentDto);
-
     }
+
 }
